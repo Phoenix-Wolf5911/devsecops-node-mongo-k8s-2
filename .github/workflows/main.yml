@@ -1,0 +1,42 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./app
+
+      - name: Run Semgrep code scan
+        run: |
+          pip install semgrep
+          semgrep --config auto ./app
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install wget -y
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.56.2_Linux-64bit.deb
+          sudo dpkg -i trivy_0.56.2_Linux-64bit.deb
+
+      - name: Build Docker image
+        run: docker build -t nodeapp-secure -f docker/Dockerfile .
+
+      - name: Scan Docker image
+        run: trivy image --exit-code 1 --severity HIGH,CRITICAL nodeapp-secure
+
+      - name: Push image if secure
+        if: success()
+        run: echo "Image passed all security checks"
