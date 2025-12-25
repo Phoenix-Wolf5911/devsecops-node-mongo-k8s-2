@@ -1,19 +1,25 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const client = require('prom-client');
 
 const app = express();
-const PORT = 3000;
+const port = 3000;
 
-// ✅ Updated connection (no old options)
-mongoose.connect('mongodb://localhost:27017/testdb')
-  .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Create a Registry and collect default metrics
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
 
-app.get('/', (req, res) => {
-  res.send('Hello from DevSecOps Project!');
+// Expose /metrics endpoint
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Example homepage (optional)
+app.get('/', (req, res) => {
+  res.send('Hello from Node.js App!');
+});
+
+app.listen(port, () => {
+  console.log(`App running on port ${port}`);
 });
 
